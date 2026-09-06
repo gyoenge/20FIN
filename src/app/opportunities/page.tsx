@@ -24,13 +24,15 @@ const PURPOSE_ORDER = ["save", "independence", "education", "earn", "relief", "c
 
 /** 각 기회를 하나의 금융 목적 그룹에 배정한다. */
 function purposeOf(opp: Opportunity): string {
+  // 학업·학자금은 데이터 분류(education)를 목적보다 우선한다 (장학·학자금대출 모두 이 그룹).
+  if (opp.category === "education") return "education";
   switch (opp.opportunityType) {
     case "save":
       return "save";
     case "earn":
       return "earn";
     case "claim":
-      return opp.category === "education" ? "education" : "claim";
+      return "claim";
     case "borrow":
     case "reduce":
       return opp.category === "housing" ? "independence" : "relief";
@@ -41,8 +43,6 @@ function purposeOf(opp: Opportunity): string {
       return "independence";
     case "employment":
       return "earn";
-    case "education":
-      return "education";
     case "asset":
       return "save";
     default:
