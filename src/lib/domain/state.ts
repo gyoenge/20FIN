@@ -10,7 +10,9 @@ import type {
   FinancialContext,
   FinEvent,
   FinEventStatus,
+  FinEventType,
   LifeEvent,
+  Priority,
   User,
 } from "./timeline";
 import { statusForDate } from "./timeline";
@@ -140,6 +142,43 @@ export function removeLifeEvent(state: TimelineState, eventId: string): Timeline
 }
 
 /* ---------------------------- Fin Event ------------------------------- */
+
+/**
+ * Agent/사용자 행동으로 Fin Event 를 하나 추가한다.
+ * (지금의 기회 → Timeline 담기, Decision → Timeline 반영 등)
+ */
+export function addFinEvent(
+  state: TimelineState,
+  input: {
+    title: string;
+    type: FinEventType;
+    dueDate?: string;
+    priority?: Priority;
+    note?: string;
+    lifeEventId?: string;
+    sourceOpportunityId?: string;
+  },
+): TimelineState {
+  const fe: FinEvent = {
+    id: id("fe"),
+    userId: state.user?.id ?? "me",
+    lifeEventId: input.lifeEventId,
+    title: input.title,
+    type: input.type,
+    dueDate: input.dueDate,
+    priority: input.priority ?? "medium",
+    status: "pending",
+    generatedBy: "agent",
+    note: input.note,
+    sourceOpportunityId: input.sourceOpportunityId,
+  };
+  return { ...state, finEvents: [...state.finEvents, fe] };
+}
+
+/** 이미 이 Opportunity 를 Timeline 에 담았는지 */
+export function hasOpportunityFinEvent(state: TimelineState, opportunityId: string): boolean {
+  return state.finEvents.some((f) => f.sourceOpportunityId === opportunityId);
+}
 
 export function setFinEventStatus(
   state: TimelineState,

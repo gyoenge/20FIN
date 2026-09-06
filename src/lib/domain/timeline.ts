@@ -67,6 +67,8 @@ export interface FinEvent {
   generatedBy: "rule" | "agent";
   /** Right Now / Event Detail 에 보여줄 한 줄 설명 */
   note?: string;
+  /** 지금의 기회에서 Timeline 으로 담은 경우, 원본 Opportunity id (Opportunity Injection) */
+  sourceOpportunityId?: string;
 }
 
 /** 금융 프로필 — Progressive Profiling 으로 필요할 때만 채운다 (설계 §46) */
@@ -233,4 +235,24 @@ export function daysUntil(date: string | undefined, now = new Date()): number | 
   if (!dt) return null;
   const ms = dt.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   return Math.round(ms / 86_400_000);
+}
+
+/** 오늘부터 해당 시점까지 남은 개월 수 (반올림). 날짜 없으면 null */
+export function monthsUntil(date: string | undefined, now = new Date()): number | null {
+  const dt = parseEventDate(date);
+  if (!dt) return null;
+  const months = (dt.getFullYear() - now.getFullYear()) * 12 + (dt.getMonth() - now.getMonth());
+  return months;
+}
+
+/** "YYYY-MM"/"YYYY-MM-DD" 를 months 만큼 이동한 문자열(원 포맷 유지, 실패 시 원본). */
+export function shiftEventDate(date: string | undefined, months: number): string | undefined {
+  if (!date) return date;
+  const parts = date.split("-").map((n) => parseInt(n, 10));
+  const [y, m] = parts;
+  if (!y) return date;
+  const base = new Date(y, (m || 1) - 1 + months, 1);
+  const yy = base.getFullYear();
+  const mm = String(base.getMonth() + 1).padStart(2, "0");
+  return parts.length >= 3 ? `${yy}-${mm}-${String(parts[2]).padStart(2, "0")}` : `${yy}-${mm}`;
 }

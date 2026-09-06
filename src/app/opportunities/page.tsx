@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { AssetIcon, PioSays } from "@/components/Brand";
-import { TimelineLoading } from "@/components/timeline/TimelineStore";
+import { TimelineLoading, useTimeline } from "@/components/timeline/TimelineStore";
 import { PersonalContextBar } from "@/components/PersonalContextBar";
 import { useOpportunities } from "@/lib/domain/useOpportunities";
+import { addFinEvent, hasOpportunityFinEvent } from "@/lib/domain/state";
 import { timingBucket, type RankedOpportunity, type TimingBucket, type UserCtx } from "@/lib/domain/opportunity-rank";
-import type { Opportunity } from "@/lib/domain/timeline";
+import { shiftEventDate, type Opportunity } from "@/lib/domain/timeline";
 
 /**
  * 지금의 기회 = Timeline-aware Opportunity Radar (설계 §8).
@@ -119,7 +120,27 @@ export default function OpportunitiesPage() {
 
 function OpportunityCard({ r, purposeKey }: { r: RankedOpportunity; purposeKey: string }) {
   const { opp, reasons, dday } = r;
+  const { state, update } = useTimeline();
   const meta = PURPOSE[purposeKey] ?? PURPOSE.save;
   const amount = opp.benefit ?? (opp.eligibility as { amount?: string }).amount;
-  return <li className="card-soft opportunity-card"><div className="flex items-start gap-4"><span className="asset-tile"><AssetIcon name={meta.asset} size={52} /></span><div className="min-w-0 flex-1"><div className="mb-2 flex flex-wrap gap-2"><span className="status-badge confirmed">{meta.label}</span>{dday !== null && <span className="status-badge deadline">D-{dday}</span>}</div><h2>{opp.title}</h2><p className="provider">{opp.provider}</p></div></div>{amount && <p className="opportunity-benefit">{amount}</p>}{reasons.length > 0 && <div className="reasons"><p>내 계획과 어떤 관련이 있나요?</p><ul>{reasons.map((why, i) => <li key={i}><span className="text-fin-green-700">✓ </span>{why}</li>)}</ul></div>}{opp.officialUrl ? <a href={opp.officialUrl} target="_blank" rel="noopener noreferrer" className="button button-secondary">공식 정보 확인하기 ↗</a> : <p className="text-sm text-ink-500">신청 경로는 제공 기관에 확인해주세요.</p>}{opp.snapshotDate && <p className="opportunity-snapshot">기준일 {opp.snapshotDate} · 공식 공고에서 확인</p>}</li>;
+  const added = hasOpportunityFinEvent(state, opp.id);
+
+  // 담을 때: 마감일이 있으면 그날, 없으면 가장 가까운 미래 Life Event 3개월 전에 배치한다.
+  const nextFuture = [...state.lifeEvents]
+    .filter((e) => e.status !== "past" && e.date)
+    .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""))[0];
+  const handleAdd = () =>
+    update((s) =>
+      addFinEvent(s, {
+        title: `${opp.title} 신청 검토`,
+        type: "opportunity",
+        dueDate: opp.endDate ?? shiftEventDate(nextFuture?.date, -3),
+        priority: dday !== null && dday <= 30 ? "high" : "medium",
+        note: opp.benefit,
+        lifeEventId: nextFuture?.id,
+        sourceOpportunityId: opp.id,
+      }),
+    );
+
+  return <li className="card-soft opportunity-card"><div className="flex items-start gap-4"><span className="asset-tile"><AssetIcon name={meta.asset} size={52} /></span><div className="min-w-0 flex-1"><div className="mb-2 flex flex-wrap gap-2"><span className="status-badge confirmed">{meta.label}</span>{dday !== null && <span className="status-badge deadline">D-{dday}</span>}</div><h2>{opp.title}</h2><p className="provider">{opp.provider}</p></div></div>{amount && <p className="opportunity-benefit">{amount}</p>}{reasons.length > 0 && <div className="reasons"><p>내 계획과 어떤 관련이 있나요?</p><ul>{reasons.map((why, i) => <li key={i}><span className="text-fin-green-700">✓ </span>{why}</li>)}</ul></div>}<div className="opportunity-actions">{opp.officialUrl ? <a href={opp.officialUrl} target="_blank" rel="noopener noreferrer" className="button button-secondary">공식 정보 확인하기 ↗</a> : <p className="text-sm text-ink-500">신청 경로는 제공 기관에 확인해주세요.</p>}<button type="button" className="button opportunity-add" onClick={handleAdd} disabled={added} aria-pressed={added}>{added ? "✓ Timeline에 담김" : "＋ 내 Timeline에 추가"}</button></div>{opp.snapshotDate && <p className="opportunity-snapshot">기준일 {opp.snapshotDate} · 공식 공고에서 확인</p>}</li>;
 }

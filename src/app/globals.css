@@ -1628,6 +1628,23 @@ img {
   text-align: right;
 }
 
+.opportunity-actions {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.opportunity-actions .button-secondary { flex: 1 1 auto; }
+.opportunity-add {
+  flex: 0 0 auto;
+  background: #eafaf1;
+  border: 1px solid #b8e6cf;
+  color: #12683f;
+  font-weight: 700;
+}
+.opportunity-add:hover:not(:disabled) { background: #dcf5e8; }
+.opportunity-add:disabled { background: #f2f5f3; border-color: var(--color-line); color: #7c8a80; cursor: default; }
+
 .opportunity-source {
   font-size: 12px;
   color: #637580;
