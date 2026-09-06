@@ -1854,6 +1854,10 @@ img {
 
 .roadmap-hint { font-size: 13px; color: #637580; margin-bottom: 4px; }
 
+.alert-section { border: 1px solid #ffcdb2; background: #fff6f1; }
+.alert-section h2 { color: #b23c17; }
+.asset-tile.warn { background: #ffe9df; }
+
 .whatif { border: 1px solid #ffe0ad; background: #fff9ef; border-radius: 16px; padding: 18px; }
 .whatif h3 { color: #9a5b00; }
 .whatif-options { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
