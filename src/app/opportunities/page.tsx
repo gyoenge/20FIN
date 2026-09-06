@@ -79,7 +79,12 @@ export default function OpportunitiesPage() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const shown = filter === "all" ? items : items.filter((i) => i.purpose === filter);
-  const sections = TIMING_ORDER.map((b) => [b, shown.filter((i) => i.bucket === b)] as const).filter(([, list]) => list.length);
+  // 섹션 내 정렬: 큐레이션 대표 프로그램을 위로, 그다음 관련도 점수 순.
+  const curated = (i: Item) => (i.r.opp.id.startsWith("program:") ? 1 : 0);
+  const sections = TIMING_ORDER.map((b) => {
+    const list = shown.filter((i) => i.bucket === b).sort((a, z) => curated(z) - curated(a) || z.r.score - a.r.score);
+    return [b, list] as const;
+  }).filter(([, list]) => list.length);
 
   return <div className="space-y-6">
     <header className="page-header opportunity-header"><div><p className="eyebrow">OPPORTUNITY RADAR</p><h1>지금의 금융 기회</h1><p>내 조건과 Timeline을 기준으로 오늘 챙길 기회를 시점별로 모았어요.</p></div><AssetIcon name="utility-opportunity" size={100} /></header>
@@ -94,14 +99,17 @@ export default function OpportunitiesPage() {
         {purposes.map((p) => { const n = items.filter((i) => i.purpose === p).length; return <button key={p} type="button" aria-pressed={filter === p} onClick={() => setFilter(p)}>{PURPOSE[p].label} <small>{n}</small></button>; })}
       </nav>
       {sections.length === 0 && <PioSays>이 조건에 맞는 기회가 아직 없어요. 다른 필터를 눌러보세요.</PioSays>}
+      {sections.length > 1 && <nav className="timing-jump" aria-label="시점 바로가기">
+        {sections.map(([bucket, list]) => { const meta = TIMING[bucket]; return <a key={bucket} href={`#timing-${bucket}`}><span aria-hidden="true">{meta.emoji}</span> {meta.title} <small>{list.length}</small></a>; })}
+      </nav>}
       {sections.map(([bucket, list]) => {
         const meta = TIMING[bucket];
         const open = expanded[bucket];
-        const visible = open ? list : list.slice(0, 6);
-        return <section key={bucket} className="opportunity-section timing-section" aria-live="polite">
+        const visible = open ? list : list.slice(0, 4);
+        return <section key={bucket} id={`timing-${bucket}`} className="opportunity-section timing-section" aria-live="polite">
           <div className="section-heading timing-heading"><div><h2><span aria-hidden="true">{meta.emoji}</span> {meta.title}</h2><p>{meta.description}</p></div><span>{list.length}개</span></div>
           <ul className="grid gap-5 xl:grid-cols-2">{visible.map((i) => <OpportunityCard key={i.r.opp.id} r={i.r} purposeKey={i.purpose} />)}</ul>
-          {list.length > 6 && <button className="button opportunity-more" type="button" onClick={() => setExpanded((e) => ({ ...e, [bucket]: !open }))}>{open ? "간단히 보기" : `${list.length - 6}개 더 보기`}</button>}
+          {list.length > 4 && <button className="button opportunity-more" type="button" onClick={() => setExpanded((e) => ({ ...e, [bucket]: !open }))}>{open ? "간단히 보기" : `${list.length - 4}개 더 보기`}</button>}
         </section>;
       })}
     </>}

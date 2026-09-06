@@ -1539,6 +1539,28 @@ img {
 .opportunity-chips button[aria-pressed="true"] { border-color: #20b26b; background: #20b26b; color: white; }
 .opportunity-chips button[aria-pressed="true"] small { color: #d9f4e6; }
 
+.timing-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.timing-jump a {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #f4f6f2;
+  border: 1px solid var(--color-line);
+  color: #45596a;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  transition: background .2s, border-color .2s;
+}
+.timing-jump a:hover { background: #e9f6ef; border-color: #9fd9bd; }
+.timing-jump a small { color: #9aa7ad; margin-left: 3px; }
+
+.timing-section { scroll-margin-top: 16px; }
+.timing-section + .timing-section { border-top: 1px solid var(--color-line); padding-top: 26px; }
+
 .timing-heading { align-items: end; }
 .timing-heading h2 { font-size: 20px; }
 .timing-heading p { margin-top: 4px; color: #637580; font-size: 13px; }
