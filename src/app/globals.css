@@ -1554,6 +1554,23 @@ img {
   margin-top: auto;
 }
 
+.opportunity-benefit {
+  border-radius: 14px;
+  background: #eafaf1;
+  border: 1px solid #cdeede;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.6;
+  color: #12683f;
+}
+
+.opportunity-snapshot {
+  font-size: 11px;
+  color: #8a97a0;
+  text-align: right;
+}
+
 .opportunity-source {
   font-size: 12px;
   color: #637580;

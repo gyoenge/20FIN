@@ -79,18 +79,35 @@ export interface FinancialContext {
   emergencyFund?: number;
 }
 
+/**
+ * 금융 목적 축 (docs/opportunity-expansion.md §3).
+ * category(데이터 분류)와 별개로, 20대 경제활동 관점의 목적을 나타낸다.
+ */
+export type OpportunityType =
+  | "save" // 돈을 모으는 기회 (자산형성 적금·통장)
+  | "earn" // 소득을 늘리는 기회 (취업지원·훈련·수당)
+  | "borrow" // 낮은 비용으로 자금 조달 (저금리 청년대출)
+  | "reduce" // 비용을 줄이는 기회 (주거비 지원·상담)
+  | "claim"; // 받을 수 있는 지원을 받는 것 (세금환급·공제·급여)
+
 /** 청년정책·주거지원 등 외부 기회 (설계 §47) */
 export interface Opportunity {
   id: string;
   title: string;
   provider: string;
   category: "housing" | "employment" | "asset" | "education" | "finance";
+  /** 금융 목적 축 — 큐레이션 데이터에만 부여, 라이브 소스는 category 로 대체 (§3) */
+  opportunityType?: OpportunityType;
   /** 매칭 근거 계산용 조건 (나이/지역/상태 등) */
   eligibility: Record<string, unknown>;
+  /** "월 최대 50만원 · 정부기여금 매칭 · 3년" 같은 혜택 요약 (공식값) */
+  benefit?: string;
   startDate?: string;
   endDate?: string;
   officialUrl?: string;
   updatedAt: string;
+  /** 큐레이션 데이터의 정보 기준일 (YYYY-MM-DD) */
+  snapshotDate?: string;
   /** "왜 추천했나요?" 에 노출할 매칭 근거 */
   reasons?: string[];
 }
