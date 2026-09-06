@@ -18,7 +18,7 @@ const PURPOSE: Record<string, { label: string; description: string; asset: strin
   education: { label: "학업·학자금", description: "등록금·학자금 부담을 더는 장학·지원", asset: "event-student-loan" },
   earn: { label: "소득 늘리기", description: "취업지원·훈련·수당으로 소득을 만드는 기회", asset: "event-first-salary" },
   relief: { label: "금융 부담 줄이기", description: "저금리 자금·상담으로 부담을 더는 기회", asset: "utility-protection" },
-  claim: { label: "돌려받기", description: "받을 수 있는 환급·공제를 챙기는 기회", asset: "utility-opportunity" },
+  claim: { label: "돌려받기", description: "환급·공제·수당 등 받을 수 있는 지원을 챙기는 기회", asset: "utility-opportunity" },
 };
 const PURPOSE_ORDER = ["save", "independence", "education", "earn", "relief", "claim"];
 
