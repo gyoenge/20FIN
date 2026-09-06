@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Pio } from "@/components/Brand";
 import { useTimeline } from "@/components/timeline/TimelineStore";
 import { PersonalContextBar } from "@/components/PersonalContextBar";
+import { addFinEvent } from "@/lib/domain/state";
 import type { ChatMessage, Decision } from "@/lib/domain/state";
 
 /** 화면 6 — AI Agent 피오 (설계 §30~§32). Timeline Context 를 아는 대화형 Agent. */
@@ -220,11 +221,18 @@ function AnswerText({ text }: { text: string; }) {
 
 /** Decision UI — 추천 + 비교표 + Why (설계 §32) */
 function DecisionCard({ decision }: { decision: Decision; }) {
+  const { update } = useTimeline();
+  const [applied, setApplied] = useState(false);
   const columns = useMemo(() => {
     const keys = new Set<string>();
     decision.options.forEach((o) => Object.keys(o.columns ?? {}).forEach((k) => keys.add(k)));
     return [...keys];
   }, [decision.options]);
+
+  const applyToTimeline = () => {
+    update((s) => addFinEvent(s, { title: decision.title || decision.recommendation, type: "planning", note: decision.recommendation, priority: "medium" }));
+    setApplied(true);
+  };
 
   return (
     <div className="card-soft decision-card overflow-hidden">
@@ -276,6 +284,15 @@ function DecisionCard({ decision }: { decision: Decision; }) {
           </ol>
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={applyToTimeline}
+        disabled={applied}
+        className="w-full border-t border-line bg-fin-green-50 px-4 py-3 text-[13px] font-bold text-fin-green-700 transition hover:bg-fin-green-100 disabled:cursor-default disabled:bg-surface disabled:text-ink-400"
+      >
+        {applied ? "✓ Timeline에 반영됨" : "＋ 이 계획을 Timeline에 적용"}
+      </button>
     </div>
   );
 }
