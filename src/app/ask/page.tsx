@@ -5,8 +5,9 @@ import { useSearchParams } from "next/navigation";
 import { Pio } from "@/components/Brand";
 import { useTimeline } from "@/components/timeline/TimelineStore";
 import { PersonalContextBar } from "@/components/PersonalContextBar";
-import { addFinEvent } from "@/lib/domain/state";
-import type { ChatMessage, Decision } from "@/lib/domain/state";
+import { addFinEvent, regenerateFinEvents, updateLifeEvent } from "@/lib/domain/state";
+import type { ChatMessage, Decision, TimelineChange } from "@/lib/domain/state";
+import { formatEventDate, monthsUntil, shiftEventDate } from "@/lib/domain/timeline";
 
 /** 화면 6 — AI Agent 피오 (설계 §30~§32). Timeline Context 를 아는 대화형 Agent. */
 
@@ -73,13 +74,14 @@ function AskInner() {
         }),
       });
       if (!res.ok) throw new Error("대화 요청 실패");
-      const data = (await res.json()) as { answer: string; decision: Decision | null; };
+      const data = (await res.json()) as { answer: string; decision: Decision | null; timelineChange?: TimelineChange | null; };
       if (typeof data.answer !== "string") throw new Error("응답 형식 오류");
       const agentMessage: ChatMessage = {
         id: `m_${Date.now().toString(36)}_a`,
         role: "agent",
         content: data.answer,
         decision: data.decision ?? undefined,
+        timelineChange: data.timelineChange ?? undefined,
         createdAt: new Date().toISOString(),
       };
       update((s) => ({ ...s, chats: { ...s.chats, [THREAD]: [...(s.chats[THREAD] ?? []), agentMessage] } }));
@@ -194,7 +196,50 @@ function MessageBubble({ message }: { message: ChatMessage; }) {
           <AnswerText text={message.content} />
         </div>
         {message.decision && <DecisionCard decision={message.decision} />}
+        {message.timelineChange && <WhatIfChatCard change={message.timelineChange} />}
       </div>
+    </div>
+  );
+}
+
+/** 대화형 What-if — AI 가 추출한 시점 변경을 규칙 엔진으로 계산해 미리보기 + 적용 */
+function WhatIfChatCard({ change }: { change: TimelineChange; }) {
+  const { state, update } = useTimeline();
+  const [applied, setApplied] = useState(false);
+  const ev = state.lifeEvents.find((e) => e.title === change.eventTitle);
+  if (!ev) return null;
+
+  const newDate = change.newDate ?? shiftEventDate(ev.date, change.shiftMonths ?? 0);
+  const beforeM = monthsUntil(ev.date);
+  const afterM = monthsUntil(newDate);
+  const showSaving = (ev.subtype === "independence" || ev.subtype === "independence-fund") && state.financialContext?.savings != null;
+  const need = (m: number | null) => (m && m > 0 ? `약 ${Math.round(Math.max(0, 5_000_000 - (state.financialContext?.savings ?? 0)) / m / 10000).toLocaleString()}만원` : "—");
+
+  const apply = () => {
+    if (newDate) update((s) => regenerateFinEvents(updateLifeEvent(s, ev.id, { date: newDate })));
+    setApplied(true);
+  };
+
+  return (
+    <div className="card-soft decision-card overflow-hidden">
+      <div className="bg-fin-yellow-50 px-4 py-3" style={{ background: "#fff9ef" }}>
+        <p className="text-[11px] font-bold" style={{ color: "#9a5b00" }}>What-if · 시점을 바꾸면?</p>
+        <p className="mt-0.5 text-[14px] font-extrabold text-fin-navy">{ev.title} {formatEventDate(ev.date)} → {formatEventDate(newDate)}</p>
+      </div>
+      <div className="px-4 py-3 text-[13px] text-ink-700 space-y-1.5">
+        <div className="flex justify-between"><span className="text-ink-500">준비 기간</span><strong>{beforeM ?? "—"}개월 → {afterM ?? "—"}개월</strong></div>
+        {showSaving && <div className="flex justify-between"><span className="text-ink-500">필요 월 저축(보증금 기준)</span><strong>{need(beforeM)} → {need(afterM)}</strong></div>}
+        <p className="text-[11px] text-ink-400">준비 체크포인트도 함께 {(change.shiftMonths ?? 0) < 0 ? "앞당겨" : "미뤄"}집니다.</p>
+      </div>
+      <button
+        type="button"
+        onClick={apply}
+        disabled={applied}
+        className="w-full border-t border-line px-4 py-3 text-[13px] font-bold transition disabled:cursor-default disabled:bg-surface disabled:text-ink-400"
+        style={applied ? undefined : { background: "#ff8b3d", color: "white" }}
+      >
+        {applied ? "✓ Timeline에 반영됨" : "이 시점으로 Timeline 변경"}
+      </button>
     </div>
   );
 }
