@@ -50,6 +50,8 @@ export interface ChatMessage {
   decision?: Decision;
   /** 대화형 What-if 제안 (있을 때만) */
   timelineChange?: TimelineChange;
+  /** 답변이 "받을 수 있는 기회"에 관한 것이면 실데이터 기회 카드를 함께 노출 (Chat → Opportunity) */
+  showOpportunities?: boolean;
   sources?: string[];
   createdAt: string;
 }

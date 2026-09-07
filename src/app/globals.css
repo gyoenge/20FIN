@@ -1644,6 +1644,14 @@ img {
 }
 .opportunity-add:hover:not(:disabled) { background: #dcf5e8; }
 .opportunity-add:disabled { background: #f2f5f3; border-color: var(--color-line); color: #7c8a80; cursor: default; }
+.opportunity-analyze {
+  flex: 0 0 auto;
+  background: white;
+  border: 1px solid var(--color-line);
+  color: #45596a;
+  font-weight: 650;
+}
+.opportunity-analyze:hover { border-color: #9fd9bd; color: #12683f; }
 
 .opportunity-source {
   font-size: 12px;

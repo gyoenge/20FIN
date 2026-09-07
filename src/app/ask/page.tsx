@@ -1,12 +1,14 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Pio } from "@/components/Brand";
 import { useTimeline } from "@/components/timeline/TimelineStore";
 import { PersonalContextBar } from "@/components/PersonalContextBar";
-import { addFinEvent, regenerateFinEvents, updateLifeEvent } from "@/lib/domain/state";
+import { addFinEvent, hasOpportunityFinEvent, regenerateFinEvents, updateLifeEvent } from "@/lib/domain/state";
 import type { ChatMessage, Decision, TimelineChange } from "@/lib/domain/state";
+import { useOpportunities } from "@/lib/domain/useOpportunities";
 import { formatEventDate, monthsUntil, shiftEventDate } from "@/lib/domain/timeline";
 
 /** 화면 6 — AI Agent 피오 (설계 §30~§32). Timeline Context 를 아는 대화형 Agent. */
@@ -31,7 +33,9 @@ function AskInner() {
   const { state, update, ready } = useTimeline();
   const params = useSearchParams();
   const eventId = params.get("event") ?? undefined;
+  const qParam = params.get("q") ?? undefined;
   const focusEvent = eventId ? state.lifeEvents.find((e) => e.id === eventId) : undefined;
+  const autoSent = useRef(false);
 
   const messages = useMemo<ChatMessage[]>(() => state.chats[THREAD] ?? [], [state.chats]);
   const [input, setInput] = useState("");
@@ -74,7 +78,7 @@ function AskInner() {
         }),
       });
       if (!res.ok) throw new Error("대화 요청 실패");
-      const data = (await res.json()) as { answer: string; decision: Decision | null; timelineChange?: TimelineChange | null; };
+      const data = (await res.json()) as { answer: string; decision: Decision | null; timelineChange?: TimelineChange | null; showOpportunities?: boolean; };
       if (typeof data.answer !== "string") throw new Error("응답 형식 오류");
       const agentMessage: ChatMessage = {
         id: `m_${Date.now().toString(36)}_a`,
@@ -82,6 +86,7 @@ function AskInner() {
         content: data.answer,
         decision: data.decision ?? undefined,
         timelineChange: data.timelineChange ?? undefined,
+        showOpportunities: data.showOpportunities === true,
         createdAt: new Date().toISOString(),
       };
       update((s) => ({ ...s, chats: { ...s.chats, [THREAD]: [...(s.chats[THREAD] ?? []), agentMessage] } }));
@@ -97,6 +102,15 @@ function AskInner() {
       setPending(false);
     }
   };
+
+  // Opportunity → Chat: 기회 카드에서 "내 상황에서 분석"으로 넘어오면 질문을 자동 전송한다.
+  useEffect(() => {
+    if (ready && qParam && !autoSent.current) {
+      autoSent.current = true;
+      send(qParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, qParam]);
 
   const empty = messages.length === 0;
 
@@ -197,7 +211,44 @@ function MessageBubble({ message }: { message: ChatMessage; }) {
         </div>
         {message.decision && <DecisionCard decision={message.decision} />}
         {message.timelineChange && <WhatIfChatCard change={message.timelineChange} />}
+        {message.showOpportunities && <ChatOpportunities />}
       </div>
+    </div>
+  );
+}
+
+/** Chat → Opportunity — 답변에 맞춰 내 Timeline 기준 상위 실데이터 기회를 카드로 보여준다. */
+function ChatOpportunities() {
+  const { ranked } = useOpportunities();
+  const { state, update } = useTimeline();
+  const top = ranked.slice(0, 3);
+  const nextFuture = [...state.lifeEvents].filter((e) => e.status !== "past" && e.date).sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""))[0];
+  if (!top.length) return null;
+  return (
+    <div className="space-y-2">
+      {top.map(({ opp, dday, reasons }) => {
+        const added = hasOpportunityFinEvent(state, opp.id);
+        return (
+          <div key={opp.id} className="card-soft rounded-2xl p-3 ring-1 ring-line">
+            <strong className="block text-[13px] font-bold text-fin-navy">{opp.title}</strong>
+            <span className="text-[11px] text-ink-500">{opp.provider}{dday !== null ? ` · 마감 D-${dday}` : ""}</span>
+            {opp.benefit && <p className="mt-1 text-[12px] font-semibold text-fin-green-700">{opp.benefit}</p>}
+            {reasons[0] && <p className="mt-1 text-[11px] text-ink-500">✓ {reasons[0]}</p>}
+            <div className="mt-2 flex gap-2">
+              {opp.officialUrl && <a href={opp.officialUrl} target="_blank" rel="noopener noreferrer" className="flex-1 rounded-lg border border-line px-2 py-1.5 text-center text-[12px] font-semibold text-ink-700 hover:bg-surface">공식 정보 ↗</a>}
+              <button
+                type="button"
+                onClick={() => update((s) => addFinEvent(s, { title: `${opp.title} 신청 검토`, type: "opportunity", dueDate: opp.endDate ?? shiftEventDate(nextFuture?.date, -3), note: opp.benefit, lifeEventId: nextFuture?.id, sourceOpportunityId: opp.id }))}
+                disabled={added}
+                className="rounded-lg bg-fin-green-50 px-3 py-1.5 text-[12px] font-bold text-fin-green-700 transition hover:bg-fin-green-100 disabled:bg-surface disabled:text-ink-400"
+              >
+                {added ? "✓ 담김" : "＋ 담기"}
+              </button>
+            </div>
+          </div>
+        );
+      })}
+      <Link href="/opportunities" className="block text-center text-[12px] font-semibold text-fin-green-700 hover:underline">지금의 기회 전체 보기 ›</Link>
     </div>
   );
 }
