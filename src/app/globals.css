@@ -1866,6 +1866,18 @@ img {
 .alert-section h2 { color: #b23c17; }
 .asset-tile.warn { background: #ffe9df; }
 
+.saving-calc { border: 1px solid #cdeede; background: #f4fbf7; border-radius: 16px; padding: 18px; }
+.saving-calc h3 { color: #12683f; }
+.calc-fields { display: flex; gap: 10px; margin-top: 12px; }
+.calc-fields label { flex: 1; display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 700; color: #526674; }
+.calc-input { display: flex; align-items: center; gap: 6px; background: white; border: 1px solid #cdeede; border-radius: 12px; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #45596a; }
+.calc-input input { width: 100%; border: none; outline: none; font-size: 15px; font-weight: 700; color: #102a43; text-align: right; }
+.calc-result { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding: 12px 14px; background: #20b26b; border-radius: 12px; color: white; }
+.calc-result span { font-size: 13px; font-weight: 600; }
+.calc-result strong { font-size: 20px; font-weight: 800; }
+.calc-note { font-size: 11px; color: #7c8a80; margin: 10px 0 12px; }
+.saving-calc .button { width: 100%; }
+
 .whatif { border: 1px solid #ffe0ad; background: #fff9ef; border-radius: 16px; padding: 18px; }
 .whatif h3 { color: #9a5b00; }
 .whatif-options { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
