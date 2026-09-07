@@ -50,18 +50,22 @@ export function useOpportunities() {
     };
   }, [ready, region]);
 
-  const ranked = useMemo<RankedOpportunity[]>(() => {
-    if (!bundle) return [];
-    const ctx: UserCtx = {
+  const ctx = useMemo<UserCtx>(
+    () => ({
       age: state.user ? ageOf(state.user.birthYear) : null,
       region,
       currentStatus: state.user?.currentStatus,
       livingType: state.user?.livingType,
       lifeSubtypes: state.lifeEvents.map((e) => e.subtype),
       futureTypes: [...new Set(state.lifeEvents.filter((e) => e.status !== "past").map((e) => e.type))],
-    };
-    return rankOpportunities(bundle.opportunities, ctx);
-  }, [bundle, state.user, state.lifeEvents, region]);
+    }),
+    [state.user, state.lifeEvents, region],
+  );
 
-  return { ranked, bundle, loading, error };
+  const ranked = useMemo<RankedOpportunity[]>(() => {
+    if (!bundle) return [];
+    return rankOpportunities(bundle.opportunities, ctx);
+  }, [bundle, ctx]);
+
+  return { ranked, ctx, bundle, loading, error };
 }

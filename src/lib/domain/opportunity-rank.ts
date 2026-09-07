@@ -186,6 +186,21 @@ function actionabilityScore(opp: Opportunity, dday: number | null): number {
   return Math.min(1, a);
 }
 
+/* --- 타이밍 분류 (Opportunity Radar, 설계 §8) -------------------------
+   지금의 기회를 금융 목적이 아니라 "언제 챙겨야 하는가"로 나눈다.
+   - now  : 신청 마감 임박 (D-30 이내)
+   - soon : 마감 D-90 이내 또는 내 현재 상태·미래 Life Event 와 연결된 상시 프로그램
+   - later: 그 외 관련 정보 */
+export type TimingBucket = "now" | "soon" | "later";
+
+export function timingBucket(r: RankedOpportunity, ctx: UserCtx): TimingBucket {
+  if (r.dday !== null && r.dday <= 30) return "now";
+  const statusMatch = !!ctx.currentStatus && !!STATUS_TO_CATEGORY[ctx.currentStatus]?.includes(r.opp.category);
+  const eventMatch = (CATEGORY_TO_LIFE[r.opp.category] ?? []).some((t) => ctx.futureTypes.includes(t));
+  if ((r.dday !== null && r.dday <= 90) || statusMatch || eventMatch) return "soon";
+  return "later";
+}
+
 export function rankOpportunities(opps: Opportunity[], ctx: UserCtx): RankedOpportunity[] {
   const userKey = userRegionKey(ctx.region);
   return opps

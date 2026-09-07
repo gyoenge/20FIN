@@ -10,7 +10,9 @@ import type {
   FinancialContext,
   FinEvent,
   FinEventStatus,
+  FinEventType,
   LifeEvent,
+  Priority,
   User,
 } from "./timeline";
 import { statusForDate } from "./timeline";
@@ -25,6 +27,19 @@ export interface Decision {
   why: string[];
 }
 
+/**
+ * 대화형 What-if — AI 가 "미래 일정을 옮기면?" 의도를 감지해 대상·이동만 추출한다.
+ * 실제 영향(준비 기간·필요 저축 등) 수치는 클라이언트 규칙 엔진이 계산한다(설계 §40).
+ */
+export interface TimelineChange {
+  /** 대상 Life Event 제목 (Timeline 에 실제로 있는 것) */
+  eventTitle: string;
+  /** 이동 개월 수 (음수 = 앞당김, 양수 = 미룸) */
+  shiftMonths?: number;
+  /** 절대 목표 시점 (YYYY-MM) */
+  newDate?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "agent";
@@ -33,6 +48,10 @@ export interface ChatMessage {
   lifeEventId?: string;
   /** 구조화 추천 (있을 때만) */
   decision?: Decision;
+  /** 대화형 What-if 제안 (있을 때만) */
+  timelineChange?: TimelineChange;
+  /** 답변이 "받을 수 있는 기회"에 관한 것이면 실데이터 기회 카드를 함께 노출 (Chat → Opportunity) */
+  showOpportunities?: boolean;
   sources?: string[];
   createdAt: string;
 }
@@ -140,6 +159,43 @@ export function removeLifeEvent(state: TimelineState, eventId: string): Timeline
 }
 
 /* ---------------------------- Fin Event ------------------------------- */
+
+/**
+ * Agent/사용자 행동으로 Fin Event 를 하나 추가한다.
+ * (지금의 기회 → Timeline 담기, Decision → Timeline 반영 등)
+ */
+export function addFinEvent(
+  state: TimelineState,
+  input: {
+    title: string;
+    type: FinEventType;
+    dueDate?: string;
+    priority?: Priority;
+    note?: string;
+    lifeEventId?: string;
+    sourceOpportunityId?: string;
+  },
+): TimelineState {
+  const fe: FinEvent = {
+    id: id("fe"),
+    userId: state.user?.id ?? "me",
+    lifeEventId: input.lifeEventId,
+    title: input.title,
+    type: input.type,
+    dueDate: input.dueDate,
+    priority: input.priority ?? "medium",
+    status: "pending",
+    generatedBy: "agent",
+    note: input.note,
+    sourceOpportunityId: input.sourceOpportunityId,
+  };
+  return { ...state, finEvents: [...state.finEvents, fe] };
+}
+
+/** 이미 이 Opportunity 를 Timeline 에 담았는지 */
+export function hasOpportunityFinEvent(state: TimelineState, opportunityId: string): boolean {
+  return state.finEvents.some((f) => f.sourceOpportunityId === opportunityId);
+}
 
 export function setFinEventStatus(
   state: TimelineState,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { complete, extractJson, llmAvailable } from "@/lib/llm";
-import type { Decision } from "@/lib/domain/state";
+import type { Decision, TimelineChange } from "@/lib/domain/state";
 import type { FinancialContext, FinEvent, LifeEvent, User } from "@/lib/domain/timeline";
 
 /**
@@ -105,10 +105,18 @@ ${contextBlock}
     "recommendation": "한 줄 핵심 추천",
     "options": [{"label":"전략명","columns":{"열이름":"값"},"note":"특징","recommended":true|false}],
     "why": ["이유1","이유2","이유3"]
-  }
+  },
+  "timelineChange": null 또는 {
+    "eventTitle": "위 Life Timeline 에 실제로 있는 이벤트 제목 그대로",
+    "shiftMonths": 정수 (음수=앞당김, 양수=미룸),
+    "newDate": "YYYY-MM (절대 시점을 말한 경우만)"
+  },
+  "showOpportunities": true/false
 }
 decision은 '무엇을 먼저 할지 / 얼마씩 나눌지' 같은 선택·배분 질문일 때만 채우고, 그 외에는 null로 둔다.
-options의 columns는 모든 전략이 동일한 열 이름을 쓰고, 값이 없는 항목은 지어내지 말 것.`;
+options의 columns는 모든 전략이 동일한 열 이름을 쓰고, 값이 없는 항목은 지어내지 말 것.
+timelineChange는 사용자가 '미래 일정을 앞당기면/미루면/특정 시점으로 바꾸면 어떻게 되는지' 가정할 때만 채운다. eventTitle은 반드시 위 Timeline에 있는 이벤트여야 하고, 없으면 null로 둔다. 준비 기간·필요 저축 같은 수치는 여기서 계산하지 말 것(앱이 계산한다). answer에는 방향만 설명하고 구체적 금액·개월 수치를 지어내지 않는다.
+showOpportunities는 사용자가 '지금 받을 수 있는 지원·기회가 있는지' 묻거나, 특정 계획에 활용할 제도·상품을 찾을 때 true. 이때 answer에서 구체 상품명을 나열하지 말고, "아래에서 관련 기회를 확인하세요"처럼 안내만 한다(실제 카드는 앱이 개인화해 보여준다).`;
 
 export async function POST(req: Request) {
   const body = (await req.json()) as AskBody;
@@ -135,7 +143,7 @@ export async function POST(req: Request) {
   const userMsg = historyText ? `[이전 대화]\n${historyText}\n\n[질문] ${body.message}` : body.message;
 
   const raw = await complete({ system: SYSTEM(contextBlock), user: userMsg, effort: "medium", maxTokens: 4000 });
-  const parsed = extractJson<{ answer?: string; decision?: Decision | null }>(raw);
+  const parsed = extractJson<{ answer?: string; decision?: Decision | null; timelineChange?: TimelineChange | null; showOpportunities?: boolean }>(raw);
 
   if (!parsed?.answer) {
     // JSON 파싱 실패 시 원문을 그대로 답변으로 쓴다.
@@ -145,5 +153,12 @@ export async function POST(req: Request) {
     });
   }
 
-  return NextResponse.json({ answer: parsed.answer, decision: parsed.decision ?? null });
+  // timelineChange 의 eventTitle 이 실제 Timeline 에 있을 때만 통과시킨다(환각 방지).
+  const change = parsed.timelineChange;
+  const validChange =
+    change && typeof change.eventTitle === "string" && body.context.lifeEvents.some((e) => e.title === change.eventTitle)
+      ? change
+      : null;
+
+  return NextResponse.json({ answer: parsed.answer, decision: parsed.decision ?? null, timelineChange: validChange, showOpportunities: parsed.showOpportunities === true });
 }

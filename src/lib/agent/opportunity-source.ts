@@ -11,6 +11,7 @@ import type { Opportunity } from "@/lib/domain/timeline";
 import { fetchYouthPolicies, youthKeyAvailable, type YouthPolicy } from "@/lib/agent/api/youth-policy";
 import { fetchLhNotices, lhKeyAvailable, isAlwaysOpen, type LhNotice } from "@/lib/agent/api/lh";
 import { SCHOLARSHIPS_REAL, SCHOLARSHIP_SOURCE, type ScholarshipRecord } from "@/lib/data/seed/scholarships";
+import { PROGRAMS_REAL, PROGRAM_SNAPSHOT_DATE, type ProgramRecord } from "@/lib/data/seed/programs";
 
 /** "YYYYMMDD" · "YYYY-MM-DD" → "YYYY-MM-DD" (실패 시 undefined) */
 function normDate(raw?: string): string | undefined {
@@ -67,6 +68,23 @@ function fromScholarship(s: ScholarshipRecord): Opportunity {
   };
 }
 
+/** 20대 금융 프로그램 큐레이션 seed → Opportunity (정보 기준일 표기) */
+function fromProgram(p: ProgramRecord): Opportunity {
+  return {
+    id: `program:${p.id}`,
+    title: p.title,
+    provider: p.provider,
+    category: p.category,
+    opportunityType: p.opportunityType,
+    benefit: p.benefit,
+    eligibility: { minAge: p.minAge, maxAge: p.maxAge, regionText: `${p.region} ${p.title}`, summary: p.benefit },
+    endDate: p.endDate,
+    officialUrl: p.officialUrl,
+    updatedAt: PROGRAM_SNAPSHOT_DATE,
+    snapshotDate: PROGRAM_SNAPSHOT_DATE,
+  };
+}
+
 export interface OpportunityBundle {
   opportunities: Opportunity[];
   /** 통합 이전 원본 총 개수 — 필터링 UX(설계 §28)의 "N개 확인"에 쓴다 */
@@ -87,13 +105,15 @@ export async function collectOpportunities(region?: string): Promise<Opportunity
   const policyOpps = (policies ?? []).map(fromYouthPolicy);
   const lhOpps = (notices ?? []).map(fromLhNotice);
   const scholarshipOpps = SCHOLARSHIPS_REAL.map(fromScholarship);
+  const programOpps = PROGRAMS_REAL.map(fromProgram);
 
-  const opportunities = [...policyOpps, ...lhOpps, ...scholarshipOpps];
+  const opportunities = [...programOpps, ...policyOpps, ...lhOpps, ...scholarshipOpps];
 
   return {
     opportunities,
     total: opportunities.length,
     sources: [
+      { key: "program", label: "자산형성·금융지원", count: programOpps.length, live: false },
       { key: "policy", label: "청년정책", count: policyOpps.length, live: youthKeyAvailable() && policies !== null },
       { key: "lh", label: "LH 주거공고", count: lhOpps.length, live: lhKeyAvailable() && notices !== null },
       { key: "scholarship", label: "장학금", count: scholarshipOpps.length, live: false },
